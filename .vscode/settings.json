@@ -1,0 +1,17 @@
+{
+    "files.associations": {
+        "spidev.h": "c",
+        "unistd.h": "c",
+        "stdlib.h": "c",
+        "stdint.h": "c",
+        "string.h": "c",
+        "hmc5883l_driver.h": "c",
+        "stdio.h": "c",
+        "hmc5883l_user_driver.h": "c",
+        "errno.h": "c",
+        "fcntl.h": "c",
+        "math.h": "c",
+        "ioctl.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
+}
