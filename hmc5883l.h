@@ -85,6 +85,7 @@ struct hmc5883l_config {
 #define     Axis_X      0
 #define     Axis_Y      1
 #define     Axis_Z      2
+#define     COMPASS     2
 
 #define     GAUSS       0
 #define     MILIGAUSS   1
@@ -92,7 +93,7 @@ struct hmc5883l_config {
 #define     PI          3.141592654
 
 
-volatile int hmc5883l_Default_Setup(struct hmc5883l_config  config, int check);
+volatile int hmc5883l_Default_Setup(int check);
 volatile int hmc5883l_Adjust_Setup(struct hmc5883l_config  config, int check);
 volatile float hmc5883l_Magnetic(int hmc5883l, int axis, int format);
 volatile float hmc5883l_Angle(int hmc5883l, int axis);

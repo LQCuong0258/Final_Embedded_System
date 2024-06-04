@@ -1,6 +1,6 @@
 #include "hmc5883l.h"
 
-volatile int hmc5883l_Default_Setup(struct hmc5883l_config  config, int check)
+volatile int hmc5883l_Default_Setup(int check)
 {
     int hmc5883l = open(DEVICE_PATH, O_RDWR);
     if (hmc5883l < 0) {
