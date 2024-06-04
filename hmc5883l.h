@@ -11,7 +11,6 @@
 /**
  * Configuration Register A(R/W): 0x00
 */
-  
 /* Location CRA6 to CRA5 */
 #define    HMC5883L_SAMPLES_1     0x00   // Default
 #define    HMC5883L_SAMPLES_2     0x01
@@ -37,7 +36,6 @@
 /**
  * Configuration Register B(R/W): 0x01
 */
-
 /* Location CRB7 to CRB5 */
 #define     HMC5883L_RANGE_0_88GA    0x00
 #define     HMC5883L_RANGE_1_3GA     0x20       // Default
@@ -51,13 +49,13 @@
 /**
  * Mode Register (R/W): 0x02
 */
-
 /* Location MR1 to MR0 */
 #define     HMC5883L_MODE_CONTINOUS     0x00      
 #define     HMC5883L_MODE_SINGLE        0x01      // Default
 #define     HMC5883L_MODE_IDLE_1        0x02
 #define     HMC5883L_MODE_IDLE_2        0x03
 
+/* Khai báo Struct dùng để cấu hình */
 struct hmc5883l_config {
     /* Register A */
     uint8_t SAMPLES;
@@ -69,7 +67,7 @@ struct hmc5883l_config {
     uint8_t MODE;
 };
 
-// List of ioctl command
+/* Danh sách các command của hàm ioctl*/
 #define HMC5883L_IOCTL_MAGIC 'h'
 #define HMC5883L_IOCTL_CONFIG           _IOW(HMC5883L_IOCTL_MAGIC, 0, struct hmc5883l_config *)
 #define HMC5883L_IOCTL_MAGNETIC_X       _IOR(HMC5883L_IOCTL_MAGIC, 1, int)
@@ -79,20 +77,20 @@ struct hmc5883l_config {
 #define HMC5883L_IOCTL_MILIGAUSSGAIN    _IOR(HMC5883L_IOCTL_MAGIC, 5, int)
 /* Define path name*/
 #define DEVICE_PATH     "/dev/hmc5883l_device"
-/**
- * Define varialbe
-*/
+/* Define các lựa chọn đo góc và từ trường theo trục*/
 #define     Axis_X      0
 #define     Axis_Y      1
 #define     Axis_Z      2
 #define     COMPASS     2
-
+/* Define lựa chọn đơn vị */
 #define     GAUSS       0
 #define     MILIGAUSS   1
-
+/* Define giá trị pi */
 #define     PI          3.141592654
 
-
+/**
+ * Khai báo các hàm người dùng
+*/
 volatile int hmc5883l_Default_Setup(int check);
 volatile int hmc5883l_Adjust_Setup(struct hmc5883l_config  config, int check);
 volatile float hmc5883l_Magnetic(int hmc5883l, int axis, int format);
