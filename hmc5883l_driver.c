@@ -8,11 +8,11 @@
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
 
-
+/* Define tên, lớp, driver của thiết bị I2C*/
 #define DRIVER_NAME     "hmc5883l_driver"
 #define CLASS_NAME      "hmc5883l_class"
 #define DEVICE_NAME     "hmc5883l_device"
-
+/* Define các thanh ghi */
 #define HMC5883L_ADDRESS              0x1E
 #define HMC5883L_REG_CONFIG_A         0x00
 #define HMC5883L_REG_CONFIG_B         0x01
@@ -30,7 +30,6 @@
 /**
  * Configuration Register B(R/W): 0x01
 */
-
 /* Location CRB7 to CRB5 */
 #define     HMC5883L_RANGE_0_88GA    0x00
 #define     HMC5883L_RANGE_1_3GA     0x20       // Default
@@ -66,7 +65,7 @@ struct hmc5883l_config {
     uint8_t MODE;
 };
 
-// List of ioctl command
+/* Danh sách các command của hàm ioctl*/
 #define HMC5883L_IOCTL_MAGIC 'h'
 #define HMC5883L_IOCTL_CONFIG           _IOW(HMC5883L_IOCTL_MAGIC, 0, struct hmc5883l_config *)
 #define HMC5883L_IOCTL_MAGNETIC_X       _IOR(HMC5883L_IOCTL_MAGIC, 1, int)
@@ -75,11 +74,15 @@ struct hmc5883l_config {
 #define HMC5883L_IOCTL_GAUSSGAIN        _IOR(HMC5883L_IOCTL_MAGIC, 4, int)
 #define HMC5883L_IOCTL_MILIGAUSSGAIN    _IOR(HMC5883L_IOCTL_MAGIC, 5, int)
 
+/* Khai báo các biến dùng để cấu hình */
 static struct i2c_client *hmc5883l_client;
 static struct class* hmc5883l_class = NULL;
 static struct device* hmc5883l_device = NULL;
 static int major_number;
 
+/**
+ * Hàm dùng để kiểm tra sau khi cấu hình
+*/
 static int hmc5883l_check_config(void)
 {
     if(i2c_smbus_read_byte_data(hmc5883l_client, HMC5883L_REG_IDENT_A) != HMC5883L_CHECK_IDENT_A){
@@ -98,6 +101,9 @@ static int hmc5883l_check_config(void)
     return 1;
 }
 
+/**
+ * Hàm dùng để quan sát biến RDY của thanh ghi status
+*/
 static void hmc5883l_wait_status(void)
 {
     uint8_t status;
@@ -106,38 +112,45 @@ static void hmc5883l_wait_status(void)
     } while ((status & 0x01) != 0x01);
 }
 
+/**
+ * Hàm dùng để cấu hình
+*/
 static int hmc5883l_Setup(struct hmc5883l_config *config)
 {
     uint8_t ret;
-    uint8_t registerA  = (config->SAMPLES << 5) | (config->RATE << 2) | (config->MEASUREMENT);
+    uint8_t registerA  = (config->SAMPLES << 5) | (config->RATE << 2) | (config->MEASUREMENT);  // Ghép các mode để điền vào thanh ghi A
 
     /* Setup Configuration register A*/
-    ret = i2c_smbus_write_byte_data(hmc5883l_client, HMC5883L_REG_CONFIG_A, registerA);
+    ret = i2c_smbus_write_byte_data(hmc5883l_client, HMC5883L_REG_CONFIG_A, registerA);         // Truyền dữ liệu vào thanh ghi A
     if(ret < 0){
-        printk(KERN_ERR "configuration at register A failed: %d\n", ret); 
+        printk(KERN_ERR "Configuration at register A failed: %d\n", ret); 
         return -EIO;
     }
     /* Setup Configuration register B*/
-    ret = i2c_smbus_write_byte_data(hmc5883l_client, HMC5883L_REG_CONFIG_B, config->GAIN);
+    ret = i2c_smbus_write_byte_data(hmc5883l_client, HMC5883L_REG_CONFIG_B, config->GAIN);      // Truyền dữ liệu vào thanh ghi B
     if(ret < 0){
-        printk(KERN_ERR "configuration at register B failed: %d\n", ret);
+        printk(KERN_ERR "Configuration at register B failed: %d\n", ret);
         return -EIO;
     }
     /* Setup Register MODE*/
-    ret = i2c_smbus_write_byte_data(hmc5883l_client, HMC5883L_REG_MODE,  config->MODE);
+    ret = i2c_smbus_write_byte_data(hmc5883l_client, HMC5883L_REG_MODE,  config->MODE);         // Truyền dữ liệu vào thanh ghi Mode
     if(ret < 0){
-        printk(KERN_ERR "configuration at register MODE failed: %d\n", ret);
+        printk(KERN_ERR "Configuration at register MODE failed: %d\n", ret);
         return -EIO;
     }
-
+    /* Chờ đến lúc sẵn sàng */
     hmc5883l_wait_status();
 
     return 1;
 }
 
+/**
+ * Hàm dùng để lấy giá trị độ lợi để tính toán từ trường theo đơn vị tương ứng
+*/
 static int hmc5883l_get_gain(struct i2c_client *client, int option)
 {
     int output, gauss, mgauss;
+    // Đọc dữ liệu từ thanh ghi B
     uint8_t reg = i2c_smbus_read_byte_data(client, HMC5883L_REG_CONFIG_B);
     if(reg < 0){
         printk(KERN_INFO "Failed to read data Register B!!!\n");
@@ -181,26 +194,31 @@ static int hmc5883l_get_gain(struct i2c_client *client, int option)
         printk(KERN_ERR "Invalid gain value read from Register B\n");
         break;
     }
-
+    // Lựa chọn đơn vị
     if(option == 1) {output = mgauss;}
     else {output = gauss;}
 
     return output;
 }
+
+/**
+ * Hàm dùng để lấy giá trị từ trường của 3 trục
+*/
 static int16_t hmc5883l_get_magnetic(struct i2c_client *client, int axis)
 {
     uint8_t data[6];
     int16_t array[3];
 
+    // Đọc 6 thanh ghi, mỗi trục là 2 thanh ghi
     for (int i = 0; i < 6; i++) {
         data[i] = i2c_smbus_read_byte_data(client, HMC5883L_REG_OUT_X_M + i);
     }
-    
+    // Ghép 2 thanh ghi để lấy giá trị từ trường 16bit
     array[0] = (int16_t)((data[0] << 8) | data[1]);     // X
     array[2] = (int16_t)((data[2] << 8) | data[3]);     // Z
     array[1] = (int16_t)((data[4] << 8) | data[5]);     // Y
 
-    /* Wait ready register */
+    /* Chờ đến lúc sẵn sàng cho lần đọc tiếp theo */
     hmc5883l_wait_status();
 
     return array[axis];
@@ -235,45 +253,54 @@ static long hmc5883l_ioctl(struct file *file, unsigned int command, unsigned lon
             if(hmc5883l_check_config() < 0) {return -EFAULT;}
             break;
         
+        /**
+         * Cả 3 trường hợp đều lấy giá trị từ trường và gửi lên user space
+        */
         case HMC5883L_IOCTL_MAGNETIC_X:
             magnetic = hmc5883l_get_magnetic(hmc5883l_client, Axis_X);
             if(copy_to_user((int __user *)arg, &magnetic, sizeof(magnetic))) {return -EFAULT;}
             break;
-
         case HMC5883L_IOCTL_MAGNETIC_Y:
             magnetic = hmc5883l_get_magnetic(hmc5883l_client, Axis_Y);
             if(copy_to_user((int __user *)arg, &magnetic, sizeof(magnetic))) {return -EFAULT;}
             break;
-
         case HMC5883L_IOCTL_MAGNETIC_Z:
             magnetic = hmc5883l_get_magnetic(hmc5883l_client, Axis_Z);
             if(copy_to_user((int __user *)arg, &magnetic, sizeof(magnetic))) {return -EFAULT;}
             break;
-
+        /**
+         * Lấy giá trị đơn vị gửi lên user space
+        */
         case HMC5883L_IOCTL_GAUSSGAIN:
             // lấy giá trị arg từ user space
             Gain = hmc5883l_get_gain(hmc5883l_client, 0);
             if(copy_to_user((int __user *)arg, &Gain, sizeof(Gain))) {return -EFAULT;}
         break;
-
         case HMC5883L_IOCTL_MILIGAUSSGAIN:
             // lấy giá trị arg từ user space
             Gain = hmc5883l_get_gain(hmc5883l_client, 1);
             if(copy_to_user((int __user *)arg, &Gain, sizeof(Gain))) {return -EFAULT;}
         break;
 
+        /* Giá trị tham số không hợp lệ */
         default:
             return -EINVAL;
     }
     return 0;
 }
 
+/**
+ * Struct chứa các hàm cho lớp user space
+*/
 static struct file_operations fops = {
     .open               = hmc5883l_open,
     .release            = hmc5883l_release,
     .unlocked_ioctl     = hmc5883l_ioctl,
 };
 
+/**
+ * Hàm probe khi khởi tạo driver
+*/
 static int hmc5883l_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
     hmc5883l_client = client;
@@ -283,7 +310,7 @@ static int hmc5883l_probe(struct i2c_client *client, const struct i2c_device_id 
         printk(KERN_ERR "Registering a major number FAILED!!!\n");
         return major_number;
     }
-    printk(KERN_INFO "MHMC5883L driver INSTALLED with major number: %d\n", major_number);
+    printk(KERN_INFO "HMC5883L driver INSTALLED with major number: %d\n", major_number);
 
     hmc5883l_class = class_create(THIS_MODULE, CLASS_NAME);
     if(IS_ERR(hmc5883l_class)){
@@ -301,6 +328,9 @@ static int hmc5883l_probe(struct i2c_client *client, const struct i2c_device_id 
     return 0;
 }
 
+/**
+ * Hàm remove khi xóa driver
+*/
 static void hmc5883l_remove(struct i2c_client *client)
 {
     device_destroy(hmc5883l_class, MKDEV(major_number, 0));     // Hủy thiết bị
@@ -311,6 +341,9 @@ static void hmc5883l_remove(struct i2c_client *client)
     printk(KERN_INFO "HMC5883L driver removed!!!\n");
 }
 
+/**
+ * Đăng ký với I2C có sẵn của hệ thống
+*/
 static const struct of_device_id hmc5883l_of_match[] = {
     { .compatible = "Honeywell, HMC5883L", },
     { },
@@ -328,7 +361,7 @@ static struct i2c_driver hmc5883l_driver = {
 
 static int __init hmc5883l_init (void)
 {
-    printk(KERN_INFO "Initializing HMC5883L deriver!!!\n");
+    printk(KERN_INFO "Initializing HMC5883L driver!!!\n");
     return i2c_add_driver(&hmc5883l_driver); // add driver into i2c of system
 }
 
