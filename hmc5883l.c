@@ -149,7 +149,7 @@ volatile void hmc5883l_Direction(int hmc5883l, char *direction)
         strcpy(direction, "East");
     }
     else if((angle >= 105.0) && (angle < 165.0)){   // Hướng Đông-Nam
-        strcpy(direction, "South_East");l
+        strcpy(direction, "South_East");
     }
     else if((angle >= 165.0) && (angle <= 195.0)){  // Hướng Nam
         strcpy(direction, "South");
